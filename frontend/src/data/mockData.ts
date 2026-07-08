@@ -7,6 +7,18 @@ export const empresas: Record<string, Empresa> = {
     slug: "crispy-chicken-lab",
     logoUrl: "/logos/crispy-chicken-lab.png",
   },
+  "burger-house": {
+    id: "emp-002",
+    nombre: "Burger House",
+    slug: "burger-house",
+    logoUrl: "/logos/burger-house.png",
+  },
+  "pizza-roma": {
+    id: "emp-003",
+    nombre: "Pizza Roma",
+    slug: "pizza-roma",
+    logoUrl: "/logos/pizza-roma.png",
+  },
 };
 
 export const categorias: Categoria[] = [
