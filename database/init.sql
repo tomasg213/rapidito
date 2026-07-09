@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     nombre      TEXT NOT NULL,
     telefono    TEXT,
+    direccion   TEXT,
     rol         TEXT NOT NULL DEFAULT 'cliente'
                 CHECK (rol IN ('cliente', 'comercio', 'repartidor')),
     created_at  TIMESTAMPTZ DEFAULT now()

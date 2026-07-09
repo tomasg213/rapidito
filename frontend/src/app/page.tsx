@@ -75,6 +75,12 @@ export default function Home() {
           <span className="text-sm text-gray-600">
             {perfil.nombre} ({perfil.rol})
           </span>
+          <Link
+            href="/configuracion"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Configuracion
+          </Link>
           <button
             onClick={signOut}
             className="text-sm text-red-600 hover:underline"

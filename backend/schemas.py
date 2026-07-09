@@ -118,5 +118,12 @@ class UsuarioOut(BaseModel):
     id: UUID
     nombre: str
     telefono: str | None
+    direccion: str | None
     rol: str
     created_at: datetime
+
+
+class ActualizarUsuarioRequest(BaseModel):
+    nombre: str | None = None
+    telefono: str | None = None
+    direccion: str | None = None
