@@ -104,14 +104,19 @@ function DashboardCliente() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [pedidos, setPedidos] = useState<any[]>([]);
+  const [refreshPedidos, setRefreshPedidos] = useState(0);
 
-  useEffect(() => {
+  const fetchPedidos = () => {
     supabase
       .from("pedidos")
       .select("*")
       .order("created_at", { ascending: false })
       .then(({ data }) => setPedidos(data ?? []));
-  }, []);
+  };
+
+  useEffect(() => {
+    if (tab === "pedidos") fetchPedidos();
+  }, [tab, refreshPedidos]);
 
   const handleAddToCart = (item: CartItem) => {
     if (cart.length > 0 && cart[0].comercio_id !== item.comercio_id) {
@@ -155,6 +160,7 @@ function DashboardCliente() {
   const handleClearCart = () => {
     setCart([]);
     setCartOpen(false);
+    setRefreshPedidos((n) => n + 1);
   };
 
   const tabs = [
