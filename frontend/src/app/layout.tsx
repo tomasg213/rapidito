@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
+import ClientShell from "./ClientShell";
 
 export const metadata: Metadata = {
   title: "Rapidito",
@@ -15,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <CartProvider>
+            <ClientShell>{children}</ClientShell>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

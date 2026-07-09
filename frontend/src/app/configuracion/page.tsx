@@ -91,12 +91,7 @@ export default function ConfiguracionPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-md mx-auto space-y-6">
-        <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Configuracion</h1>
-          <a href="/" className="text-sm text-blue-600 hover:underline">
-            &larr; Volver
-          </a>
-        </div>
 
         <form
           onSubmit={handleGuardar}

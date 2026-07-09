@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/lib/supabase";
 import CatalogoProductos from "@/components/CatalogoProductos";
 import type { CartItem } from "@/components/CatalogoProductos";
-import CartPanel from "@/components/CartPanel";
 
 interface Perfil {
   id: string;
@@ -15,7 +15,8 @@ interface Perfil {
 }
 
 export default function Home() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { cart, addToCart, clearCart } = useCart();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [fetching, setFetching] = useState(true);
 
@@ -68,41 +69,17 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Rapidito</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">
-            {perfil.nombre} ({perfil.rol})
-          </span>
-          <Link
-            href="/configuracion"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Configuracion
-          </Link>
-          <button
-            onClick={signOut}
-            className="text-sm text-red-600 hover:underline"
-          >
-            Cerrar sesion
-          </button>
-        </div>
-      </header>
-
-      <section className="p-6 max-w-4xl mx-auto">
-        {perfil.rol === "cliente" && <DashboardCliente />}
-        {perfil.rol === "comercio" && <DashboardComercio />}
-        {perfil.rol === "repartidor" && <DashboardRepartidor />}
-      </section>
-    </main>
+    <section className="p-6 max-w-4xl mx-auto">
+      {perfil.rol === "cliente" && <DashboardCliente />}
+      {perfil.rol === "comercio" && <DashboardComercio />}
+      {perfil.rol === "repartidor" && <DashboardRepartidor />}
+    </section>
   );
 }
 
 function DashboardCliente() {
   const [tab, setTab] = useState<"ordenar" | "pedidos">("ordenar");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  const { cart, addToCart, clearCart } = useCart();
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [refreshPedidos, setRefreshPedidos] = useState(0);
 
@@ -124,47 +101,13 @@ function DashboardCliente() {
         "Tenes productos de otro comercio en el carrito. Queres vaciarlo y agregar este?"
       );
       if (!ok) return;
-      setCart([item]);
-      setCartOpen(true);
-      return;
+      clearCart();
     }
-
-    setCart((prev) => {
-      const existing = prev.find(
-        (p) => p.producto_id === item.producto_id
-      );
-      if (existing) {
-        return prev.map((p) =>
-          p.producto_id === item.producto_id
-            ? { ...p, cantidad: p.cantidad + 1 }
-            : p
-        );
-      }
-      return [...prev, item];
-    });
-    setCartOpen(true);
-  };
-
-  const handleUpdateCantidad = (producto_id: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((p) =>
-          p.producto_id === producto_id
-            ? { ...p, cantidad: p.cantidad + delta }
-            : p
-        )
-        .filter((p) => p.cantidad > 0)
-    );
-  };
-
-  const handleClearCart = () => {
-    setCart([]);
-    setCartOpen(false);
-    setRefreshPedidos((n) => n + 1);
+    addToCart(item);
   };
 
   const tabs = [
-    { key: "ordenar" as const, label: "Ordenar", badge: cart.length },
+    { key: "ordenar" as const, label: "Ordenar" },
     { key: "pedidos" as const, label: "Mis pedidos" },
   ];
 
@@ -183,11 +126,6 @@ function DashboardCliente() {
             }`}
           >
             {t.label}
-            {"badge" in t && t.badge != null && t.badge > 0 && (
-              <span className="ml-1.5 bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">
-                {t.badge}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -227,16 +165,6 @@ function DashboardCliente() {
             </div>
           )}
         </>
-      )}
-
-      {/* Carrito modal */}
-      {cartOpen && (
-        <CartPanel
-          cart={cart}
-          onUpdateCantidad={handleUpdateCantidad}
-          onClearCart={handleClearCart}
-          onClose={() => setCartOpen(false)}
-        />
       )}
     </div>
   );
