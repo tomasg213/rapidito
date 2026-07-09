@@ -40,6 +40,20 @@ class PedidoOut(BaseModel):
     referencia: str | None
     estado: str
     created_at: datetime
+    total_items: int = 0
+
+
+class PedidoProductoOut(BaseModel):
+    id: UUID
+    producto_id: UUID
+    nombre: str | None = None
+    cantidad: int
+    precio_unitario: Decimal
+    subtotal: Decimal
+
+
+class PedidoDetalleOut(PedidoOut):
+    items: list[PedidoProductoOut]
 
 
 class PedidoProductoIn(BaseModel):

@@ -88,13 +88,38 @@ export default function PedidoDetailPage() {
           </div>
         </div>
 
+        {/* Productos */}
+        <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Productos
+          </h2>
+          {pedido.items.length === 0 ? (
+            <p className="text-gray-400 text-sm">Sin productos</p>
+          ) : (
+            <div className="divide-y">
+              {pedido.items.map((item) => (
+                <div key={item.id} className="flex justify-between py-2 text-sm">
+                  <div>
+                    <span className="font-medium">{item.nombre ?? "Producto"}</span>
+                    <span className="text-gray-400 ml-2">x{item.cantidad}</span>
+                  </div>
+                  <span className="text-gray-700">
+                    ${Number(item.subtotal).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Detalles */}
         <div className="bg-white rounded-lg shadow-sm p-6 space-y-2">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
             Detalles
           </h2>
           <p>
-            <span className="text-gray-500">Total:</span> ${pedido.monto_total}
+            <span className="text-gray-500">Total:</span> $
+            {Number(pedido.monto_total).toFixed(2)}
           </p>
           <p>
             <span className="text-gray-500">Direccion:</span>{" "}

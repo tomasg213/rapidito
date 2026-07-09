@@ -218,7 +218,8 @@ function DashboardCliente() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    ${p.monto_total} &middot;{" "}
+                    ${Number(p.monto_total).toFixed(2)} &middot;{" "}
+                    {p.total_items ?? 0} productos &middot;{" "}
                     {new Date(p.created_at).toLocaleDateString()}
                   </p>
                 </Link>
@@ -260,10 +261,16 @@ function DashboardComercio() {
       if (c) {
         const { data: p } = await supabase
           .from("pedidos")
-          .select("*")
+          .select("*, pedido_productos(id)")
           .eq("comercio_id", c.id)
           .order("created_at", { ascending: false });
-        setPedidos(p ?? []);
+        const withCounts = (p ?? []).map((pedido: any) => ({
+          ...pedido,
+          total_items: pedido.pedido_productos?.length ?? 0,
+        }));
+        // Remove temp field
+        withCounts.forEach((pedido: any) => delete pedido.pedido_productos);
+        setPedidos(withCounts);
       }
     };
     fetchData();
@@ -308,7 +315,10 @@ function DashboardComercio() {
                 {p.estado}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">${p.monto_total}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              ${Number(p.monto_total).toFixed(2)} &middot;{" "}
+              {p.total_items ?? 0} productos
+            </p>
           </div>
         ))}
       </div>

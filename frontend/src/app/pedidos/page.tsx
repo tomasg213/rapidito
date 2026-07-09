@@ -27,9 +27,14 @@ export default function PedidosPage() {
           >
             <div className="flex justify-between">
               <span className="font-medium">#{p.id.slice(0, 8)}</span>
-              <span className="text-sm capitalize">{p.estado}</span>
+              <span className="text-sm capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                {p.estado}
+              </span>
             </div>
-            <p className="text-sm text-gray-500">${p.monto_total}</p>
+            <p className="text-sm text-gray-500">
+              ${Number(p.monto_total).toFixed(2)} &middot;{" "}
+              {p.total_items ?? 0} productos
+            </p>
           </Link>
         ))}
       </div>
