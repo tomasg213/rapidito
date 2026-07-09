@@ -34,7 +34,8 @@ async def get_current_user(
 
     try:
         resp = supabase.auth.get_user(token)
-        return dict(resp.user)
+        user = resp.user
+        return {"id": str(user.id)}
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
