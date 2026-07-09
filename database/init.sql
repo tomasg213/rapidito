@@ -93,135 +93,110 @@ ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pedido_productos ENABLE ROW LEVEL SECURITY;
 
--- 4a. usuarios
-CREATE POLICY IF NOT EXISTS "usuarios_select_own"
-    ON public.usuarios FOR SELECT
-    USING (id = auth.uid());
+-- Helper para crear políticas solo si no existen (compatible PG < 15)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'usuarios_select_own') THEN
+        CREATE POLICY "usuarios_select_own" ON public.usuarios FOR SELECT USING (id = auth.uid());
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "usuarios_insert_own"
-    ON public.usuarios FOR INSERT
-    WITH CHECK (id = auth.uid());
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'usuarios_insert_own') THEN
+        CREATE POLICY "usuarios_insert_own" ON public.usuarios FOR INSERT WITH CHECK (id = auth.uid());
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "usuarios_update_own"
-    ON public.usuarios FOR UPDATE
-    USING (id = auth.uid())
-    WITH CHECK (id = auth.uid());
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'usuarios_update_own') THEN
+        CREATE POLICY "usuarios_update_own" ON public.usuarios FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+    END IF;
+END $$;
 
--- 4b. comercios
-CREATE POLICY IF NOT EXISTS "comercios_select_all"
-    ON public.comercios FOR SELECT
-    USING (true);
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comercios_select_all') THEN
+        CREATE POLICY "comercios_select_all" ON public.comercios FOR SELECT USING (true);
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "comercios_insert_propietario"
-    ON public.comercios FOR INSERT
-    WITH CHECK (
-        auth.uid() = propietario_id
-        AND EXISTS (
-            SELECT 1 FROM public.usuarios
-            WHERE id = auth.uid() AND rol = 'comercio'
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comercios_insert_propietario') THEN
+        CREATE POLICY "comercios_insert_propietario" ON public.comercios FOR INSERT WITH CHECK (
+            auth.uid() = propietario_id AND EXISTS (
+                SELECT 1 FROM public.usuarios WHERE id = auth.uid() AND rol = 'comercio'
+            )
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comercios_update_propietario') THEN
+        CREATE POLICY "comercios_update_propietario" ON public.comercios FOR UPDATE USING (auth.uid() = propietario_id) WITH CHECK (auth.uid() = propietario_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comercios_delete_propietario') THEN
+        CREATE POLICY "comercios_delete_propietario" ON public.comercios FOR DELETE USING (auth.uid() = propietario_id);
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_select_all') THEN
+        CREATE POLICY "productos_select_all" ON public.productos FOR SELECT USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_insert_propietario') THEN
+        CREATE POLICY "productos_insert_propietario" ON public.productos FOR INSERT WITH CHECK (
+            EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_update_propietario') THEN
+        CREATE POLICY "productos_update_propietario" ON public.productos FOR UPDATE USING (
+            EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'productos_delete_propietario') THEN
+        CREATE POLICY "productos_delete_propietario" ON public.productos FOR DELETE USING (
+            EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+        );
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'pedidos_select_own') THEN
+        CREATE POLICY "pedidos_select_own" ON public.pedidos FOR SELECT USING (
+            auth.uid() = cliente_id
+            OR auth.uid() = repartidor_id
+            OR EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+        );
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'pedidos_insert_cliente') THEN
+        CREATE POLICY "pedidos_insert_cliente" ON public.pedidos FOR INSERT WITH CHECK (auth.uid() = cliente_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'pedidos_update_comercio_estado') THEN
+        CREATE POLICY "pedidos_update_comercio_estado" ON public.pedidos FOR UPDATE
+        USING (
+            EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+            OR auth.uid() = repartidor_id
         )
-    );
+        WITH CHECK (
+            EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+            OR auth.uid() = repartidor_id
+        );
+    END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "comercios_update_propietario"
-    ON public.comercios FOR UPDATE
-    USING (auth.uid() = propietario_id)
-    WITH CHECK (auth.uid() = propietario_id);
-
-CREATE POLICY IF NOT EXISTS "comercios_delete_propietario"
-    ON public.comercios FOR DELETE
-    USING (auth.uid() = propietario_id);
-
--- 4c. productos
-CREATE POLICY IF NOT EXISTS "productos_select_all"
-    ON public.productos FOR SELECT
-    USING (true);
-
-CREATE POLICY IF NOT EXISTS "productos_insert_propietario"
-    ON public.productos FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-    );
-
-CREATE POLICY IF NOT EXISTS "productos_update_propietario"
-    ON public.productos FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-    );
-
-CREATE POLICY IF NOT EXISTS "productos_delete_propietario"
-    ON public.productos FOR DELETE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-    );
-
--- 4d. pedidos
-CREATE POLICY IF NOT EXISTS "pedidos_select_own"
-    ON public.pedidos FOR SELECT
-    USING (
-        auth.uid() = cliente_id
-        OR auth.uid() = repartidor_id
-        OR EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-    );
-
-CREATE POLICY IF NOT EXISTS "pedidos_insert_cliente"
-    ON public.pedidos FOR INSERT
-    WITH CHECK (auth.uid() = cliente_id);
-
-CREATE POLICY IF NOT EXISTS "pedidos_update_comercio_estado"
-    ON public.pedidos FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-        OR auth.uid() = repartidor_id
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.comercios
-            WHERE id = comercio_id AND propietario_id = auth.uid()
-        )
-        OR auth.uid() = repartidor_id
-    );
-
--- 4e. pedido_productos
-CREATE POLICY IF NOT EXISTS "pedido_productos_select_own"
-    ON public.pedido_productos FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.pedidos
-            WHERE id = pedido_id
-            AND (
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'pedido_productos_select_own') THEN
+        CREATE POLICY "pedido_productos_select_own" ON public.pedido_productos FOR SELECT USING (
+            EXISTS (SELECT 1 FROM public.pedidos WHERE id = pedido_id AND (
                 cliente_id = auth.uid()
                 OR repartidor_id = auth.uid()
-                OR EXISTS (
-                    SELECT 1 FROM public.comercios
-                    WHERE id = comercio_id AND propietario_id = auth.uid()
-                )
-            )
-        )
-    );
+                OR EXISTS (SELECT 1 FROM public.comercios WHERE id = comercio_id AND propietario_id = auth.uid())
+            ))
+        );
+    END IF;
 
-CREATE POLICY IF NOT EXISTS "pedido_productos_insert_cliente"
-    ON public.pedido_productos FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.pedidos
-            WHERE id = pedido_id AND cliente_id = auth.uid()
-        )
-    );
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'pedido_productos_insert_cliente') THEN
+        CREATE POLICY "pedido_productos_insert_cliente" ON public.pedido_productos FOR INSERT WITH CHECK (
+            EXISTS (SELECT 1 FROM public.pedidos WHERE id = pedido_id AND cliente_id = auth.uid())
+        );
+    END IF;
+END $$;
 
 -- 5. REPLICA IDENTITY + REALTIME ---------------------------------
 -- (idempotente: se puede ejecutar varias veces sin errores)
