@@ -29,3 +29,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Root lockfile (frontend has its own)
+/package-lock.json
