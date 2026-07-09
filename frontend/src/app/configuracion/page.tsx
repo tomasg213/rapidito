@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import AddressManager from "@/components/AddressManager";
 
 export default function ConfiguracionPage() {
   const { user, loading: authLoading } = useAuth();
@@ -11,7 +12,6 @@ export default function ConfiguracionPage() {
 
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [direccion, setDireccion] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
@@ -26,14 +26,13 @@ export default function ConfiguracionPage() {
 
     supabase
       .from("usuarios")
-      .select("nombre, telefono, direccion")
+      .select("nombre, telefono")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setNombre(data.nombre ?? "");
           setTelefono(data.telefono ?? "");
-          setDireccion(data.direccion ?? "");
         }
         setCargandoDatos(false);
       });
@@ -65,7 +64,6 @@ export default function ConfiguracionPage() {
         body: JSON.stringify({
           nombre: nombre || null,
           telefono: telefono || null,
-          direccion: direccion || null,
         }),
       });
 
@@ -92,8 +90,8 @@ export default function ConfiguracionPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Configuracion</h1>
+      <div className="max-w-md mx-auto space-y-6">
+        <h1 className="text-2xl font-bold">Configuracion</h1>
 
         <form
           onSubmit={handleGuardar}
@@ -136,19 +134,6 @@ export default function ConfiguracionPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Direccion predeterminada
-            </label>
-            <textarea
-              value={direccion}
-              onChange={(e) => setDireccion(e.target.value)}
-              placeholder="Calle, numero, piso, etc."
-              rows={3}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-
           <button
             type="submit"
             disabled={guardando}
@@ -157,6 +142,8 @@ export default function ConfiguracionPage() {
             {guardando ? "Guardando..." : "Guardar cambios"}
           </button>
         </form>
+
+        <AddressManager />
       </div>
     </main>
   );

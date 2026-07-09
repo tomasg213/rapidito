@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface CartItem {
@@ -10,6 +10,12 @@ interface CartItem {
   cantidad: number;
   comercio_id: string;
   comercio_nombre: string;
+}
+
+interface Direccion {
+  id: string;
+  nombre: string;
+  direccion: string;
 }
 
 interface Props {
@@ -25,11 +31,34 @@ export default function CartPanel({
   onClearCart,
   onClose,
 }: Props) {
-  const [direccion, setDireccion] = useState("");
+  const [direcciones, setDirecciones] = useState<Direccion[]>([]);
+  const [direccionSeleccionada, setDireccionSeleccionada] = useState("");
+  const [direccionCustom, setDireccionCustom] = useState("");
   const [referencia, setReferencia] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDirecciones = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("/v1/direcciones", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDirecciones(data ?? []);
+      }
+    };
+    fetchDirecciones();
+  }, []);
+
+  const esCustom = direccionSeleccionada === "__otra__";
+  const direccionFinal = esCustom ? direccionCustom : direccionSeleccionada;
 
   const total = cart.reduce(
     (sum, item) => sum + item.precio * item.cantidad,
@@ -39,7 +68,7 @@ export default function CartPanel({
   const comercio = cart.length > 0 ? cart[0].comercio_nombre : "";
 
   const confirmarPedido = async () => {
-    if (!direccion.trim()) {
+    if (!direccionFinal.trim()) {
       setError("La direccion es obligatoria");
       return;
     }
@@ -59,7 +88,7 @@ export default function CartPanel({
 
       const body = {
         comercio_id: cart[0].comercio_id,
-        direccion_texto: direccion,
+        direccion_texto: direccionFinal,
         referencia: referencia || null,
         productos: cart.map((item) => ({
           producto_id: item.producto_id,
@@ -181,14 +210,36 @@ export default function CartPanel({
               </p>
             )}
 
-            <input
-              type="text"
-              placeholder="Direccion de entrega *"
-              value={direccion}
-              onChange={(e) => setDireccion(e.target.value)}
-              required
-              className="w-full border rounded px-3 py-2"
-            />
+            {/* Selector de dirección */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Direccion de entrega
+              </label>
+              <select
+                value={direccionSeleccionada}
+                onChange={(e) => setDireccionSeleccionada(e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Selecciona una direccion</option>
+                {direcciones.map((d) => (
+                  <option key={d.id} value={d.direccion}>
+                    {d.nombre} — {d.direccion.slice(0, 40)}
+                    {d.direccion.length > 40 ? "..." : ""}
+                  </option>
+                ))}
+                <option value="__otra__">Otra direccion</option>
+              </select>
+
+              {esCustom && (
+                <textarea
+                  placeholder="Escribí la direccion"
+                  value={direccionCustom}
+                  onChange={(e) => setDireccionCustom(e.target.value)}
+                  rows={2}
+                  className="w-full border rounded px-3 py-2 mt-2"
+                />
+              )}
+            </div>
 
             <input
               type="text"
@@ -207,7 +258,7 @@ export default function CartPanel({
               </button>
               <button
                 onClick={confirmarPedido}
-                disabled={enviando}
+                disabled={enviando || !direccionFinal.trim()}
                 className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
               >
                 {enviando ? "Enviando..." : "Confirmar pedido"}

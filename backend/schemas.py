@@ -127,3 +127,25 @@ class ActualizarUsuarioRequest(BaseModel):
     nombre: str | None = None
     telefono: str | None = None
     direccion: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Direcciones
+# ---------------------------------------------------------------------------
+
+class DireccionOut(BaseModel):
+    id: UUID
+    usuario_id: UUID
+    nombre: str
+    direccion: str
+    created_at: datetime
+
+
+class CrearDireccionRequest(BaseModel):
+    nombre: str
+    direccion: str
+
+
+class ActualizarDireccionRequest(BaseModel):
+    nombre: str | None = None
+    direccion: str | None = None
