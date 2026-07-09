@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import CatalogoProductos from "@/components/CatalogoProductos";
+import type { CartItem } from "@/components/CatalogoProductos";
+import CartPanel from "@/components/CartPanel";
 
 interface Perfil {
   id: string;
@@ -91,6 +94,9 @@ export default function Home() {
 }
 
 function DashboardCliente() {
+  const [tab, setTab] = useState<"ordenar" | "pedidos">("ordenar");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [pedidos, setPedidos] = useState<any[]>([]);
 
   useEffect(() => {
@@ -101,34 +107,124 @@ function DashboardCliente() {
       .then(({ data }) => setPedidos(data ?? []));
   }, []);
 
+  const handleAddToCart = (item: CartItem) => {
+    if (cart.length > 0 && cart[0].comercio_id !== item.comercio_id) {
+      const ok = confirm(
+        "Tenes productos de otro comercio en el carrito. Queres vaciarlo y agregar este?"
+      );
+      if (!ok) return;
+      setCart([item]);
+      setCartOpen(true);
+      return;
+    }
+
+    setCart((prev) => {
+      const existing = prev.find(
+        (p) => p.producto_id === item.producto_id
+      );
+      if (existing) {
+        return prev.map((p) =>
+          p.producto_id === item.producto_id
+            ? { ...p, cantidad: p.cantidad + 1 }
+            : p
+        );
+      }
+      return [...prev, item];
+    });
+    setCartOpen(true);
+  };
+
+  const handleUpdateCantidad = (producto_id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((p) =>
+          p.producto_id === producto_id
+            ? { ...p, cantidad: p.cantidad + delta }
+            : p
+        )
+        .filter((p) => p.cantidad > 0)
+    );
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    setCartOpen(false);
+  };
+
+  const tabs = [
+    { key: "ordenar" as const, label: "Ordenar", badge: cart.length },
+    { key: "pedidos" as const, label: "Mis pedidos" },
+  ];
+
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">Mis pedidos</h2>
-
-      {pedidos.length === 0 && (
-        <p className="text-gray-500">No tienes pedidos aun.</p>
-      )}
-
-      <div className="grid gap-3">
-        {pedidos.map((p) => (
-          <Link
-            key={p.id}
-            href={`/pedidos/${p.id}`}
-            className="block bg-white p-4 rounded-lg shadow-sm hover:shadow"
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-200 rounded-lg p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition ${
+              tab === t.key
+                ? "bg-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
           >
-            <div className="flex justify-between items-center">
-              <span className="font-medium">Pedido #{p.id.slice(0, 8)}</span>
-              <span className="text-sm capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                {p.estado}
+            {t.label}
+            {"badge" in t && t.badge != null && t.badge > 0 && (
+              <span className="ml-1.5 bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {t.badge}
               </span>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              ${p.monto_total} &middot;{" "}
-              {new Date(p.created_at).toLocaleDateString()}
-            </p>
-          </Link>
+            )}
+          </button>
         ))}
       </div>
+
+      {/* Contenido */}
+      {tab === "ordenar" && (
+        <CatalogoProductos onAddToCart={handleAddToCart} cart={cart} />
+      )}
+
+      {tab === "pedidos" && (
+        <>
+          {pedidos.length === 0 ? (
+            <p className="text-gray-500">No tienes pedidos aun.</p>
+          ) : (
+            <div className="grid gap-3">
+              {pedidos.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/pedidos/${p.id}`}
+                  className="block bg-white p-4 rounded-lg shadow-sm hover:shadow"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">
+                      Pedido #{p.id.slice(0, 8)}
+                    </span>
+                    <span className="text-sm capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                      {p.estado}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    ${p.monto_total} &middot;{" "}
+                    {new Date(p.created_at).toLocaleDateString()}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Carrito modal */}
+      {cartOpen && (
+        <CartPanel
+          cart={cart}
+          onUpdateCantidad={handleUpdateCantidad}
+          onClearCart={handleClearCart}
+          onClose={() => setCartOpen(false)}
+        />
+      )}
     </div>
   );
 }
