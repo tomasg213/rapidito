@@ -48,7 +48,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, item];
     });
-    setCartOpen(true);
   }, []);
 
   const updateCantidad = useCallback((producto_id: string, delta: number) => {
