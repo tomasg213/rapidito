@@ -14,6 +14,7 @@ ESTADOS_VALIDOS: set[str] = {
     "en_preparacion",
     "en_camino",
     "entregado",
+    "cancelado",
 }
 
 

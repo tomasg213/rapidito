@@ -20,7 +20,7 @@ export interface Pedido {
   monto_total: number;
   direccion_texto: string;
   referencia: string | null;
-  estado: "pendiente" | "en_preparacion" | "en_camino" | "entregado";
+  estado: "pendiente" | "en_preparacion" | "en_camino" | "entregado" | "cancelado";
   created_at: string;
   total_items?: number;
   items: PedidoItem[];

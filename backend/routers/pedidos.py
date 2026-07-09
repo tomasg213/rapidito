@@ -131,6 +131,62 @@ def crear_pedido(
     return pedido_out
 
 
+@router.patch("/{pedido_id}/cancelar", response_model=PedidoDetalleOut)
+def cancelar_pedido(
+    pedido_id: UUID,
+    usuario: dict = Depends(get_current_user),
+):
+    supabase = get_supabase()
+    resultado = (
+        supabase.table("pedidos")
+        .select("*")
+        .eq("id", str(pedido_id))
+        .single()
+        .execute()
+    )
+    if not resultado.data:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    if resultado.data["estado"] != "pendiente":
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se puede cancelar un pedido en estado 'pendiente'",
+        )
+
+    if resultado.data["cliente_id"] != usuario["id"]:
+        raise HTTPException(status_code=403, detail="No puedes cancelar un pedido que no te pertenece")
+
+    updated = (
+        supabase.table("pedidos")
+        .update({"estado": "cancelado"})
+        .eq("id", str(pedido_id))
+        .execute()
+    )
+
+    items = (
+        supabase.table("pedido_productos")
+        .select("id, producto_id, cantidad, precio_unitario, subtotal, productos!inner(nombre)")
+        .eq("pedido_id", str(pedido_id))
+        .execute()
+    )
+
+    pedido = updated.data[0]
+    items_list = [
+        {
+            "id": i["id"],
+            "producto_id": i["producto_id"],
+            "nombre": i["productos"]["nombre"],
+            "cantidad": i["cantidad"],
+            "precio_unitario": i["precio_unitario"],
+            "subtotal": i["subtotal"],
+        }
+        for i in items.data
+    ]
+    pedido["items"] = items_list
+    pedido["total_items"] = len(items_list)
+    return pedido
+
+
 @router.patch("/{pedido_id}/estado", response_model=PedidoDetalleOut)
 def actualizar_estado(
     pedido_id: UUID,

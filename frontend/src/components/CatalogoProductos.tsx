@@ -30,10 +30,11 @@ interface CartItem {
 
 interface Props {
   onAddToCart: (item: CartItem) => void;
+  onUpdateCantidad: (producto_id: string, delta: number) => void;
   cart: CartItem[];
 }
 
-export default function CatalogoProductos({ onAddToCart, cart }: Props) {
+export default function CatalogoProductos({ onAddToCart, onUpdateCantidad, cart }: Props) {
   const [comercios, setComercios] = useState<Comercio[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,21 +102,49 @@ export default function CatalogoProductos({ onAddToCart, cart }: Props) {
                       ${prod.precio}
                     </p>
                   </div>
-                  <button
-                    onClick={() =>
-                      onAddToCart({
-                        producto_id: prod.id,
-                        nombre: prod.nombre,
-                        precio: prod.precio,
-                        cantidad: 1,
-                        comercio_id: comercio.id,
-                        comercio_nombre: comercio.nombre,
-                      })
+                  {(() => {
+                    const inCart = cart.find(
+                      (c) => c.producto_id === prod.id
+                    );
+                    if (inCart) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => onUpdateCantidad(prod.id, -1)}
+                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold"
+                          >
+                            -
+                          </button>
+                          <span className="w-6 text-center text-sm font-medium">
+                            {inCart.cantidad}
+                          </span>
+                          <button
+                            onClick={() => onUpdateCantidad(prod.id, 1)}
+                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+                      );
                     }
-                    className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    Agregar
-                  </button>
+                    return (
+                      <button
+                        onClick={() =>
+                          onAddToCart({
+                            producto_id: prod.id,
+                            nombre: prod.nombre,
+                            precio: prod.precio,
+                            cantidad: 1,
+                            comercio_id: comercio.id,
+                            comercio_nombre: comercio.nombre,
+                          })
+                        }
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Agregar
+                      </button>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

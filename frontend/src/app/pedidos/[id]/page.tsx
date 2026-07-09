@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { usePedidoRealtime } from "@/hooks/usePedidoRealtime";
 
 function Badge({ estado }: { estado: string }) {
@@ -9,6 +11,7 @@ function Badge({ estado }: { estado: string }) {
     en_preparacion: "bg-blue-100 text-blue-800",
     en_camino: "bg-purple-100 text-purple-800",
     entregado: "bg-green-100 text-green-800",
+    cancelado: "bg-red-100 text-red-800",
   };
 
   return (
@@ -25,6 +28,30 @@ function Badge({ estado }: { estado: string }) {
 export default function PedidoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { pedido, loading } = usePedidoRealtime(id);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const handleCancel = async () => {
+    if (!confirm("¿Cancelar este pedido?")) return;
+    setCancelLoading(true);
+    setCancelError(null);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const res = await fetch(`/v1/pedidos/${id}/cancelar`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      setCancelError(err?.detail ?? "Error al cancelar");
+    }
+    setCancelLoading(false);
+  };
 
   if (loading) {
     return (
@@ -42,13 +69,14 @@ export default function PedidoDetailPage() {
     );
   }
 
+  const esCancelado = pedido.estado === "cancelado";
   const pasos = [
     "pendiente",
     "en_preparacion",
     "en_camino",
     "entregado",
   ] as const;
-  const pasoActual = pasos.indexOf(pedido.estado as typeof pasos[number]);
+  const pasoActual = esCancelado ? -1 : pasos.indexOf(pedido.estado as typeof pasos[number]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -64,28 +92,32 @@ export default function PedidoDetailPage() {
           <h2 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">
             Estado del pedido
           </h2>
-          <div className="space-y-4">
-            {pasos.map((paso, idx) => (
-              <div key={paso} className="flex items-center gap-3">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    idx <= pasoActual
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-400"
-                  }`}
-                >
-                  {idx + 1}
+          {esCancelado ? (
+            <p className="text-red-600 font-medium">Este pedido fue cancelado</p>
+          ) : (
+            <div className="space-y-4">
+              {pasos.map((paso, idx) => (
+                <div key={paso} className="flex items-center gap-3">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      idx <= pasoActual
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    {idx + 1}
+                  </div>
+                  <span
+                    className={
+                      idx <= pasoActual ? "text-gray-900 font-medium" : "text-gray-400"
+                    }
+                  >
+                    {paso.replace("_", " ")}
+                  </span>
                 </div>
-                <span
-                  className={
-                    idx <= pasoActual ? "text-gray-900 font-medium" : "text-gray-400"
-                  }
-                >
-                  {paso.replace("_", " ")}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Productos */}
@@ -132,6 +164,24 @@ export default function PedidoDetailPage() {
             </p>
           )}
         </div>
+
+        {/* Cancelar */}
+        {pedido.estado === "pendiente" && (
+          <div className="space-y-2">
+            {cancelError && (
+              <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                {cancelError}
+              </p>
+            )}
+            <button
+              onClick={handleCancel}
+              disabled={cancelLoading}
+              className="w-full py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+            >
+              {cancelLoading ? "Cancelando..." : "Cancelar pedido"}
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

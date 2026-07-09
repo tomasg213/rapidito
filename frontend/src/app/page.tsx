@@ -79,7 +79,7 @@ export default function Home() {
 
 function DashboardCliente() {
   const [tab, setTab] = useState<"ordenar" | "pedidos">("ordenar");
-  const { cart, addToCart, clearCart } = useCart();
+  const { cart, addToCart, clearCart, updateCantidad } = useCart();
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [refreshPedidos, setRefreshPedidos] = useState(0);
 
@@ -94,6 +94,21 @@ function DashboardCliente() {
   useEffect(() => {
     if (tab === "pedidos") fetchPedidos();
   }, [tab, refreshPedidos]);
+
+  const handleCancelPedido = async (pedidoId: string) => {
+    if (!confirm("¿Cancelar este pedido?")) return;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch(`/v1/pedidos/${pedidoId}/cancelar`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (res.ok) {
+      setRefreshPedidos((n) => n + 1);
+    }
+  };
 
   const handleAddToCart = (item: CartItem) => {
     if (cart.length > 0 && cart[0].comercio_id !== item.comercio_id) {
@@ -132,7 +147,7 @@ function DashboardCliente() {
 
       {/* Contenido */}
       {tab === "ordenar" && (
-        <CatalogoProductos onAddToCart={handleAddToCart} cart={cart} />
+        <CatalogoProductos onAddToCart={handleAddToCart} onUpdateCantidad={updateCantidad} cart={cart} />
       )}
 
       {tab === "pedidos" && (
@@ -151,9 +166,22 @@ function DashboardCliente() {
                     <span className="font-medium">
                       Pedido #{p.id.slice(0, 8)}
                     </span>
-                    <span className="text-sm capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                      {p.estado}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {p.estado === "pendiente" && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleCancelPedido(p.id);
+                          }}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      <span className="text-sm capitalize px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                        {p.estado}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
                     ${Number(p.monto_total).toFixed(2)} &middot;{" "}
