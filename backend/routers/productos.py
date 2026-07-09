@@ -1,9 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
 
-from auth import get_supabase_client
+from auth import get_supabase
 from schemas import (
     ActualizarProductoRequest,
     CrearProductoRequest,
@@ -11,10 +10,11 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/v1/productos", tags=["productos"])
+supabase = get_supabase()
 
 
 @router.get("/{producto_id}", response_model=ProductoOut)
-def obtener_producto(producto_id: UUID, supabase: Client = Depends(get_supabase_client)):
+def obtener_producto(producto_id: UUID):
     resultado = (
         supabase.table("productos")
         .select("*")
@@ -31,7 +31,6 @@ def obtener_producto(producto_id: UUID, supabase: Client = Depends(get_supabase_
 def crear_producto(
     comercio_id: UUID,
     body: CrearProductoRequest,
-    supabase: Client = Depends(get_supabase_client),
 ):
     payload = body.model_dump()
     payload["comercio_id"] = str(comercio_id)
@@ -43,7 +42,6 @@ def crear_producto(
 def actualizar_producto(
     producto_id: UUID,
     body: ActualizarProductoRequest,
-    supabase: Client = Depends(get_supabase_client),
 ):
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     resultado = (
@@ -58,7 +56,7 @@ def actualizar_producto(
 
 
 @router.delete("/{producto_id}", status_code=204)
-def eliminar_producto(producto_id: UUID, supabase: Client = Depends(get_supabase_client)):
+def eliminar_producto(producto_id: UUID):
     resultado = (
         supabase.table("productos")
         .delete()

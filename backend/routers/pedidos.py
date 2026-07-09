@@ -1,9 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
 
-from auth import get_current_user, get_supabase_client
+from auth import get_current_user, get_supabase
 from schemas import (
     ActualizarEstadoRequest,
     CrearPedidoRequest,
@@ -13,14 +12,17 @@ from schemas import (
 router = APIRouter(prefix="/v1/pedidos", tags=["pedidos"])
 
 
+supabase = get_supabase()
+
+
 @router.get("", response_model=list[PedidoOut])
-def listar_pedidos(supabase: Client = Depends(get_supabase_client)):
+def listar_pedidos():
     resultado = supabase.table("pedidos").select("*").execute()
     return resultado.data
 
 
 @router.get("/{pedido_id}", response_model=PedidoOut)
-def obtener_pedido(pedido_id: UUID, supabase: Client = Depends(get_supabase_client)):
+def obtener_pedido(pedido_id: UUID):
     resultado = (
         supabase.table("pedidos")
         .select("*")
@@ -37,7 +39,6 @@ def obtener_pedido(pedido_id: UUID, supabase: Client = Depends(get_supabase_clie
 def crear_pedido(
     body: CrearPedidoRequest,
     usuario: dict = Depends(get_current_user),
-    supabase: Client = Depends(get_supabase_client),
 ):
     """
     Crea un pedido con sus líneas de productos.
@@ -76,7 +77,6 @@ def crear_pedido(
 def actualizar_estado(
     pedido_id: UUID,
     body: ActualizarEstadoRequest,
-    supabase: Client = Depends(get_supabase_client),
 ):
     """
     Actualiza el estado de un pedido.

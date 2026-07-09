@@ -27,8 +27,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
     """
-    Extrae y verifica el JWT de Supabase desde el header Authorization.
-    Retorna los datos del usuario autenticado.
+    Verifica el JWT contra Supabase Auth y retorna los datos del usuario.
     """
     token = credentials.credentials
     supabase = get_supabase()
@@ -41,16 +40,3 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o expirado",
         )
-
-
-async def get_supabase_client(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> Client:
-    """
-    Retorna un cliente Supabase autenticado con el token del usuario,
-    para que las consultas respeten RLS.
-    """
-    token = credentials.credentials
-    supabase = get_supabase()
-    supabase.auth.set_session(access_token=token, refresh_token="")
-    return supabase
