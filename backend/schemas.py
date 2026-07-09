@@ -117,8 +117,8 @@ class ActualizarProductoRequest(BaseModel):
 class UsuarioOut(BaseModel):
     id: UUID
     nombre: str
-    telefono: str | None
-    direccion: str | None
+    telefono: str | None = None
+    direccion: str | None = None
     rol: str
     created_at: datetime
 

@@ -10,11 +10,11 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/v1/productos", tags=["productos"])
-supabase = get_supabase()
 
 
 @router.get("/{producto_id}", response_model=ProductoOut)
 def obtener_producto(producto_id: UUID):
+    supabase = get_supabase()
     resultado = (
         supabase.table("productos")
         .select("*")
@@ -32,6 +32,7 @@ def crear_producto(
     comercio_id: UUID,
     body: CrearProductoRequest,
 ):
+    supabase = get_supabase()
     payload = body.model_dump()
     payload["comercio_id"] = str(comercio_id)
     resultado = supabase.table("productos").insert(payload).execute()
@@ -43,6 +44,7 @@ def actualizar_producto(
     producto_id: UUID,
     body: ActualizarProductoRequest,
 ):
+    supabase = get_supabase()
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     resultado = (
         supabase.table("productos")
@@ -57,6 +59,7 @@ def actualizar_producto(
 
 @router.delete("/{producto_id}", status_code=204)
 def eliminar_producto(producto_id: UUID):
+    supabase = get_supabase()
     resultado = (
         supabase.table("productos")
         .delete()

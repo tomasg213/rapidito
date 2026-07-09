@@ -11,17 +11,18 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/v1/comercios", tags=["comercios"])
-supabase = get_supabase()
 
 
 @router.get("", response_model=list[ComercioOut])
 def listar_comercios():
+    supabase = get_supabase()
     resultado = supabase.table("comercios").select("*").eq("activo", True).execute()
     return resultado.data
 
 
 @router.get("/{comercio_id}", response_model=ComercioOut)
 def obtener_comercio(comercio_id: UUID):
+    supabase = get_supabase()
     resultado = (
         supabase.table("comercios").select("*").eq("id", str(comercio_id)).single().execute()
     )
@@ -35,6 +36,7 @@ def crear_comercio(
     body: CrearComercioRequest,
     usuario: dict = Depends(get_current_user),
 ):
+    supabase = get_supabase()
     payload = body.model_dump()
     payload["propietario_id"] = usuario["id"]
     resultado = supabase.table("comercios").insert(payload).execute()
@@ -46,6 +48,7 @@ def actualizar_comercio(
     comercio_id: UUID,
     body: ActualizarComercioRequest,
 ):
+    supabase = get_supabase()
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     resultado = (
         supabase.table("comercios")
@@ -60,6 +63,7 @@ def actualizar_comercio(
 
 @router.get("/{comercio_id}/productos", response_model=list[ProductoOut])
 def listar_productos(comercio_id: UUID):
+    supabase = get_supabase()
     resultado = (
         supabase.table("productos")
         .select("*")

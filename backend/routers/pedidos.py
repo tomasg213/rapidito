@@ -12,17 +12,16 @@ from schemas import (
 router = APIRouter(prefix="/v1/pedidos", tags=["pedidos"])
 
 
-supabase = get_supabase()
-
-
 @router.get("", response_model=list[PedidoOut])
 def listar_pedidos():
+    supabase = get_supabase()
     resultado = supabase.table("pedidos").select("*").execute()
     return resultado.data
 
 
 @router.get("/{pedido_id}", response_model=PedidoOut)
 def obtener_pedido(pedido_id: UUID):
+    supabase = get_supabase()
     resultado = (
         supabase.table("pedidos")
         .select("*")
@@ -40,10 +39,8 @@ def crear_pedido(
     body: CrearPedidoRequest,
     usuario: dict = Depends(get_current_user),
 ):
-    """
-    Crea un pedido con sus líneas de productos.
-    Calcula monto_total a partir de los subtotales.
-    """
+    supabase = get_supabase()
+
     monto_total = sum(p.cantidad * p.precio_unitario for p in body.productos)
 
     pedido_payload = {
@@ -78,10 +75,7 @@ def actualizar_estado(
     pedido_id: UUID,
     body: ActualizarEstadoRequest,
 ):
-    """
-    Actualiza el estado de un pedido.
-    Supabase Realtime propaga automáticamente el cambio a los clientes.
-    """
+    supabase = get_supabase()
     resultado = (
         supabase.table("pedidos")
         .update({"estado": body.estado})

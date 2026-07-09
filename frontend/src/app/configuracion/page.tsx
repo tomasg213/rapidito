@@ -131,7 +131,7 @@ export default function ConfiguracionPage() {
               type="tel"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
-              placeholder="+54 11 5555-5555"
+              placeholder="0412-555-5555"
               className="w-full border rounded px-3 py-2"
             />
           </div>
