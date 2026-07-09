@@ -1,11 +1,19 @@
 #!/bin/bash
-set -e
 
 echo "=== Rapidito: levantando backend (8000) y frontend (3000) ==="
+echo "Presiona Ctrl+C para detener ambos."
+echo ""
 
-trap 'echo "Deteniendo..."; kill 0' EXIT
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-cd "$(dirname "$0")/backend" && uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
-cd "$(dirname "$0")/frontend" && npm run dev &
+cd "$ROOT/backend"
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
+PID_BACKEND=$!
 
-wait
+cd "$ROOT/frontend"
+npm run dev &
+PID_FRONTEND=$!
+
+trap 'echo ""; echo "Deteniendo..."; kill $PID_BACKEND $PID_FRONTEND 2>/dev/null; exit' INT TERM
+
+wait $PID_BACKEND $PID_FRONTEND

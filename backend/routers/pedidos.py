@@ -1,0 +1,95 @@
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from supabase import Client
+
+from auth import get_current_user, get_supabase_client
+from schemas import (
+    ActualizarEstadoRequest,
+    CrearPedidoRequest,
+    PedidoOut,
+)
+
+router = APIRouter(prefix="/v1/pedidos", tags=["pedidos"])
+
+
+@router.get("", response_model=list[PedidoOut])
+def listar_pedidos(supabase: Client = Depends(get_supabase_client)):
+    resultado = supabase.table("pedidos").select("*").execute()
+    return resultado.data
+
+
+@router.get("/{pedido_id}", response_model=PedidoOut)
+def obtener_pedido(pedido_id: UUID, supabase: Client = Depends(get_supabase_client)):
+    resultado = (
+        supabase.table("pedidos")
+        .select("*")
+        .eq("id", str(pedido_id))
+        .single()
+        .execute()
+    )
+    if not resultado.data:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    return resultado.data
+
+
+@router.post("", response_model=PedidoOut, status_code=201)
+def crear_pedido(
+    body: CrearPedidoRequest,
+    usuario: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_client),
+):
+    """
+    Crea un pedido con sus líneas de productos.
+    Calcula monto_total a partir de los subtotales.
+    """
+    monto_total = sum(p.cantidad * p.precio_unitario for p in body.productos)
+
+    pedido_payload = {
+        "cliente_id": usuario["id"],
+        "comercio_id": str(body.comercio_id),
+        "monto_total": str(monto_total),
+        "direccion_texto": body.direccion_texto,
+        "referencia": body.referencia,
+    }
+
+    pedido = supabase.table("pedidos").insert(pedido_payload).execute()
+    pedido_id = pedido.data[0]["id"]
+
+    lineas = [
+        {
+            "pedido_id": pedido_id,
+            "producto_id": str(p.producto_id),
+            "cantidad": p.cantidad,
+            "precio_unitario": str(p.precio_unitario),
+            "subtotal": str(p.cantidad * p.precio_unitario),
+        }
+        for p in body.productos
+    ]
+
+    supabase.table("pedido_productos").insert(lineas).execute()
+
+    return pedido.data[0]
+
+
+@router.patch("/{pedido_id}/estado", response_model=PedidoOut)
+def actualizar_estado(
+    pedido_id: UUID,
+    body: ActualizarEstadoRequest,
+    supabase: Client = Depends(get_supabase_client),
+):
+    """
+    Actualiza el estado de un pedido.
+    Supabase Realtime propaga automáticamente el cambio a los clientes.
+    """
+    resultado = (
+        supabase.table("pedidos")
+        .update({"estado": body.estado})
+        .eq("id", str(pedido_id))
+        .execute()
+    )
+
+    if not resultado.data:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    return resultado.data[0]
