@@ -94,25 +94,25 @@ ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pedido_productos ENABLE ROW LEVEL SECURITY;
 
 -- 4a. usuarios
-CREATE POLICY "usuarios_select_own"
+CREATE POLICY IF NOT EXISTS "usuarios_select_own"
     ON public.usuarios FOR SELECT
     USING (id = auth.uid());
 
-CREATE POLICY "usuarios_insert_own"
+CREATE POLICY IF NOT EXISTS "usuarios_insert_own"
     ON public.usuarios FOR INSERT
     WITH CHECK (id = auth.uid());
 
-CREATE POLICY "usuarios_update_own"
+CREATE POLICY IF NOT EXISTS "usuarios_update_own"
     ON public.usuarios FOR UPDATE
     USING (id = auth.uid())
     WITH CHECK (id = auth.uid());
 
 -- 4b. comercios
-CREATE POLICY "comercios_select_all"
+CREATE POLICY IF NOT EXISTS "comercios_select_all"
     ON public.comercios FOR SELECT
     USING (true);
 
-CREATE POLICY "comercios_insert_propietario"
+CREATE POLICY IF NOT EXISTS "comercios_insert_propietario"
     ON public.comercios FOR INSERT
     WITH CHECK (
         auth.uid() = propietario_id
@@ -122,21 +122,21 @@ CREATE POLICY "comercios_insert_propietario"
         )
     );
 
-CREATE POLICY "comercios_update_propietario"
+CREATE POLICY IF NOT EXISTS "comercios_update_propietario"
     ON public.comercios FOR UPDATE
     USING (auth.uid() = propietario_id)
     WITH CHECK (auth.uid() = propietario_id);
 
-CREATE POLICY "comercios_delete_propietario"
+CREATE POLICY IF NOT EXISTS "comercios_delete_propietario"
     ON public.comercios FOR DELETE
     USING (auth.uid() = propietario_id);
 
 -- 4c. productos
-CREATE POLICY "productos_select_all"
+CREATE POLICY IF NOT EXISTS "productos_select_all"
     ON public.productos FOR SELECT
     USING (true);
 
-CREATE POLICY "productos_insert_propietario"
+CREATE POLICY IF NOT EXISTS "productos_insert_propietario"
     ON public.productos FOR INSERT
     WITH CHECK (
         EXISTS (
@@ -145,7 +145,7 @@ CREATE POLICY "productos_insert_propietario"
         )
     );
 
-CREATE POLICY "productos_update_propietario"
+CREATE POLICY IF NOT EXISTS "productos_update_propietario"
     ON public.productos FOR UPDATE
     USING (
         EXISTS (
@@ -154,7 +154,7 @@ CREATE POLICY "productos_update_propietario"
         )
     );
 
-CREATE POLICY "productos_delete_propietario"
+CREATE POLICY IF NOT EXISTS "productos_delete_propietario"
     ON public.productos FOR DELETE
     USING (
         EXISTS (
@@ -164,7 +164,7 @@ CREATE POLICY "productos_delete_propietario"
     );
 
 -- 4d. pedidos
-CREATE POLICY "pedidos_select_own"
+CREATE POLICY IF NOT EXISTS "pedidos_select_own"
     ON public.pedidos FOR SELECT
     USING (
         auth.uid() = cliente_id
@@ -175,11 +175,11 @@ CREATE POLICY "pedidos_select_own"
         )
     );
 
-CREATE POLICY "pedidos_insert_cliente"
+CREATE POLICY IF NOT EXISTS "pedidos_insert_cliente"
     ON public.pedidos FOR INSERT
     WITH CHECK (auth.uid() = cliente_id);
 
-CREATE POLICY "pedidos_update_comercio_estado"
+CREATE POLICY IF NOT EXISTS "pedidos_update_comercio_estado"
     ON public.pedidos FOR UPDATE
     USING (
         EXISTS (
@@ -197,7 +197,7 @@ CREATE POLICY "pedidos_update_comercio_estado"
     );
 
 -- 4e. pedido_productos
-CREATE POLICY "pedido_productos_select_own"
+CREATE POLICY IF NOT EXISTS "pedido_productos_select_own"
     ON public.pedido_productos FOR SELECT
     USING (
         EXISTS (
@@ -214,7 +214,7 @@ CREATE POLICY "pedido_productos_select_own"
         )
     );
 
-CREATE POLICY "pedido_productos_insert_cliente"
+CREATE POLICY IF NOT EXISTS "pedido_productos_insert_cliente"
     ON public.pedido_productos FOR INSERT
     WITH CHECK (
         EXISTS (
@@ -224,9 +224,25 @@ CREATE POLICY "pedido_productos_insert_cliente"
     );
 
 -- 5. REPLICA IDENTITY + REALTIME ---------------------------------
+-- (idempotente: se puede ejecutar varias veces sin errores)
 
 ALTER TABLE public.pedidos REPLICA IDENTITY FULL;
 ALTER TABLE public.pedido_productos REPLICA IDENTITY FULL;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE ONLY public.pedidos;
-ALTER PUBLICATION supabase_realtime ADD TABLE ONLY public.pedido_productos;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'pedidos'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE ONLY public.pedidos;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'pedido_productos'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE ONLY public.pedido_productos;
+    END IF;
+END;
+$$;
